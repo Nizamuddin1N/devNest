@@ -8,7 +8,7 @@ import App from "./App";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const root=document.getElementById("root")!;
-
+fetch(`${import.meta.env.VITE_API_BASE_URL}/health`).catch(() => {});
 createRoot(root).render(
   <React.StrictMode>
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
