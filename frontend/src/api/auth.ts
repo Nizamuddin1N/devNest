@@ -23,11 +23,13 @@ export const verifyEmail = async (data: any) => {
     return response.data;
 };
 
-export const googleLogin = async (idToken: string) => {
-    const response = await api.post("/auth/google", { idToken });
-    return response.data;
-};
 
+
+// Always send accessToken — useGoogleLogin always returns access_token
+export const googleLogin = async (accessToken: string) => {
+    const res = await api.post("/auth/google", { accessToken });
+    return res.data;
+};
 export const sendOTP = async (email: string) => {
     const response = await api.post("/auth/send-otp", { email });
     return response.data;

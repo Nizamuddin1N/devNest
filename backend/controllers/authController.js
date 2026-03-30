@@ -3,9 +3,9 @@ import { v4 as uuidv4 } from "uuid";
 import User from "../models/User.js";
 import { generateToken } from "../utils/generateToken.js";
 // import { sendMail } from "../utils/mailer.js";
-import { OAuth2Client } from "google-auth-library";
+// import { OAuth2Client } from "google-auth-library";
 
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+// const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Regular user registration
 import { generateUserHash, generateAnonymousName } from "../utils/securityUtils.js";
@@ -213,21 +213,38 @@ export const verifyEmail = async (req, res) => {
 
 export const googleLogin = async (req, res) => {
     try {
-        const { idToken } = req.body;
-        const ticket = await client.verifyIdToken({
-            idToken,
-            audience: process.env.GOOGLE_CLIENT_ID
-        });
-        
-        const payload = ticket.getPayload();
-        let user = await User.findOne({ email: payload.email });
-        
+        const { accessToken } = req.body;
+
+        if (!accessToken) {
+            return res.status(400).json({ message: "No Google token provided" });
+        }
+
+        // Fetch user profile from Google
+        const response = await fetch(
+            `https://www.googleapis.com/oauth2/v1/userinfo?access_token=${accessToken}`
+        );
+
+        if (!response.ok) {
+            return res.status(401).json({ message: "Invalid Google token" });
+        }
+
+        const profile = await response.json();
+
+        if (!profile.email) {
+            return res.status(401).json({ message: "Could not get email from Google" });
+        }
+
+        let user = await User.findOne({ email: profile.email });
+
         if (!user) {
             user = await User.create({
-                name: payload.name,
-                email: payload.email,
+                name: profile.name,
+                email: profile.email,
                 isVerified: true,
-                googleId: payload.sub
+                googleId: profile.id,
+                avatar: profile.picture,
+                password: null,
+                role: 'user'
             });
         }
 
@@ -243,6 +260,7 @@ export const googleLogin = async (req, res) => {
                 role: user.role
             }
         });
+
     } catch (error) {
         console.error("Google login error:", error);
         res.status(500).json({ message: "Google login failed" });
