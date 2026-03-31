@@ -225,7 +225,7 @@ This architecture ensures:
 * Node.js
 * Express
 * MongoDB + Mongoose
-* JWT Authentication
+* JWT Authentication + Google OAuth 2.0
 * bcrypt Password Hashing
 * Cron-based Automation
 * Socket.IO for real-time updates
