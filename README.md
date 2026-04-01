@@ -1,326 +1,172 @@
-# DevNest – Campus Communication and Opportunity Platform
+# 🏠 DevNest
 
-DevNest is a unified digital ecosystem built to support campus communication, opportunity discovery, learning guidance, and anonymous discussions. The platform integrates multiple subsystems—authentication, community interaction, automated event aggregation, learning resources, and administrative tools—into a cohesive, scalable, and secure application.
+**A unified campus platform for opportunities, learning, and community. Everything your college scattered across ten different places, in one.**
 
-This documentation describes the system's conceptual structure, technical workflow, module behaviors, background automation, and architectural design.
-
----
-
-## 1. Overview
-
-DevNest addresses the recurring challenges faced in academic environments:
-
-* Fragmented communication channels
-* Lack of centralized access to opportunities
-* Unstructured learning roadmaps
-* Unsafe or unmoderated anonymous discussions
-* Absence of automated tools for campus event curation
-
-By consolidating these functions, DevNest becomes a comprehensive platform that improves student engagement, faculty communication, and administrative oversight.
-
-The platform consists of four primary domains:
-
-1. **User Communication Layer**
-2. **Opportunity Dashboard with Automated Scraping**
-3. **Learning Module for Skill Development**
-4. **Community and Anonymous Posting System with Moderation**
-
-All modules interconnect through an organized backend architecture and a predictable user workflow.
+[![GitHub](https://img.shields.io/badge/GitHub-Nizamuddin1N-181717?style=flat-square&logo=github)](https://github.com/Nizamuddin1N/devNest)
+[![React](https://img.shields.io/badge/react-18-61DAFB?style=flat-square&logo=react)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/typescript-5.x-3178C6?style=flat-square&logo=typescript)](https://typescriptlang.org)
+[![Node](https://img.shields.io/badge/node-20.x-339933?style=flat-square&logo=node.js)](https://nodejs.org)
+[![MongoDB](https://img.shields.io/badge/mongodb-atlas-47A248?style=flat-square&logo=mongodb)](https://mongodb.com)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
 ---
 
-## 2. End-to-End System Workflow
+Campus life has an information problem. Hackathons are posted in one WhatsApp group, learning resources in another, event announcements on a notice board nobody checks, and anonymous feedback goes nowhere. DevNest puts all of it in one place.
 
-### “DevNest: Full System Workflow”
+Four modules — opportunities, learning roadmaps, community discussions, and anonymous posting with real moderation. A background scraper pulls fresh hackathons and competitions from Unstop and Devpost automatically so the opportunity feed is always current without anyone manually updating it. Anonymous posts are actually anonymous but still moderated — admins can reveal identity on reported content without exposing it publicly.
 
-Below is the complete system workflow integrated into the project.
-
----
-
-### **Start Process**
-
-* User opens the DevNest application, initiating UI setup and user session checks.
+Built for college students who are tired of missing things because the information was in the wrong channel.
 
 ---
 
-### **User Access Layer**
+## What it actually does
 
-1. **Is the user logged in?**
-
-   * If *No*:
-
-     * Redirect to Login/Signup
-     * Authenticate via Email/Password or Google OAuth
-     * On success → Redirect to Dashboard
-   * If *Yes*:
-
-     * Load Dashboard immediately
+- **Opportunity dashboard** — hackathons, competitions, internships aggregated automatically from Unstop and Devpost via CRON-scheduled scraper. Search, filter, click through to external page
+- **Auto-scraper engine** — runs on a schedule, fetches, validates, cleans, normalizes, and saves opportunities. Retries on failure, logs errors, notifies frontend of new data via WebSocket
+- **Learning module** — structured skill roadmaps, curated resources per path, progress tracking saved to DB per user
+- **Community posts** — create discussions either identified or anonymous, likes, reports, real-time updates via Socket.IO
+- **Anonymous posting with real moderation** — posts are genuinely anonymous to other users, but admins can reveal the author of reported content. Ban/unban users. View analytics
+- **Google OAuth + JWT** — sign in with Google or email/password, refresh token strategy, role-based access control
 
 ---
 
-### **Dashboard Operations**
+## Tech stack
 
-After authentication, the dashboard loads:
-
-* User profile
-* User preferences
-* Core modules:
-
-  * Opportunity Dashboard
-  * Learning Module
-  * Community Module
-
-Next, the user chooses one of the modules.
+| Layer | Tech |
+|---|---|
+| Frontend | React, TypeScript, Vite, TailwindCSS, React Router, Socket.IO client |
+| Backend | Node.js, Express, Mongoose |
+| Database | MongoDB Atlas |
+| Auth | JWT (access + refresh), Google OAuth 2.0, bcrypt |
+| Real-time | Socket.IO — post updates, reports, admin actions, user status |
+| Automation | Node-cron — scheduled scraper jobs |
+| Scraping | Unstop, Devpost opportunity aggregation |
 
 ---
 
-### **Module Selection Workflow**
+## How the anonymous moderation works
 
-#### **A. Opportunity Dashboard**
+This was the trickiest part to design. Full anonymity means users feel safe posting honestly. But full anonymity with no moderation means bad actors can abuse the system without consequences.
 
-* Allows search and filtering of opportunities
-* Displays detailed event information
-* Redirects to external event pages
-* Receives live updates from the scraper engine
+The solution is a separate **Anonymous Identity Mapping** collection in MongoDB. When a user creates an anonymous post, their real userId is stored in this collection mapped to the post ID — completely separate from the post document itself. The post document has no author field. Other users and the API never return this mapping.
 
-#### **B. Learning Module**
+When a post gets reported and an admin reviews it, a protected admin-only endpoint queries the identity mapping collection. The author is revealed only to the admin, only for that post, only after a report. It never appears in any public response.
 
-* User selects a skill path
-* Loads structured learning roadmaps
-* Displays resources and progress tracking
-* Stores progress data in the database
-
-#### **C. Community Module**
-
-* View existing posts
-* Create new discussions (anonymous or identified)
-* Submit posts → Stored in database
-* User interactions (likes, reports) are logged
+Anonymous to everyone. Accountable when it matters.
 
 ---
 
-## 3. Backend System (Parallel Process)
-
-A dedicated backend subsystem runs continuously alongside user interactions.
-
-### **API Gateway**
-
-* Handles incoming requests
-* Manages authentication, data retrieval, and validation
-* Routes queries to appropriate services
-
-### **Database Query Engine**
-
-* Processes CRUD operations
-* Returns structured data for UI rendering
-
-### **Output Delivery**
-
-* Sends updated content to frontend
-* Supports real-time updates using WebSockets
-
----
-
-## 4. Automated Scraper Engine (Background System)
-
-The scraper engine enhances DevNest by continuously collecting opportunities.
-
-### **Scheduling Mechanism**
-
-* Uses CRON jobs to trigger scraper tasks at intervals
-
-### **Scraping Process**
-
-* Fetches opportunities from:
-
-  * Unstop
-  * Devpost
-* Validates responses
-* If invalid:
-
-  * Log error
-  * Retry automatically
-
-### **Successful Flow**
-
-1. Extract data
-2. Clean and validate fields
-3. Normalize structure
-4. Update database
-5. Notify UI about new opportunities
-
-This background process ensures that opportunity data is always fresh and relevant.
-
----
-
-## 5. Database Structure
-
-The DevNest database is organized around functional collections:
-
-* **Users**
-* **Opportunities**
-* **Posts & Discussions**
-* **Learning Resources**
-* **Anonymous Identity Mapping**
-* **Logs & Analytics**
-
-Each collection is indexed for performance and supports scalable expansion.
-
----
-
-## 6. Analytics & Monitoring Layer
-
-The platform includes integrated monitoring capabilities:
-
-* Usage tracking for various modules
-* Scraper performance logs
-* Interaction heatmaps
-* Error and retry logs
-* Engagement analytics for administrators
-
-These insights inform improvements and maintain platform health.
-
----
-
-## 7. System Architecture
-
-DevNest follows a layered architecture:
-
+## System architecture
 ```
-Frontend (React + TypeScript)
-│
-└── Communicates via REST + WebSockets ──► Backend (Node.js + Express)
-                                           │
-                                           ├── Authentication Service
-                                           ├── Learning Service
-                                           ├── Community Service
-                                           ├── Opportunity Service
-                                           └── Scraper Engine (CRON)
-                                             
-Database Layer (MongoDB)
+React + TypeScript (Frontend)
+        │
+   REST + WebSockets
+        │
+        ▼
+   Express API (Backend)
+        │
+ ┌──────┼───────────────────┐
+ ▼      ▼                   ▼
+Auth  Community          Opportunity
+      Learning            Service
+      Service               │
+        │               CRON Scraper
+        ▼               (Unstop, Devpost)
+    MongoDB Atlas
 ```
 
-This architecture ensures:
-
-* Logical separation of concerns
-* Maintainable code structure
-* Support for scaling modules independently
-* Clean communication between client and server
-
 ---
 
-## 8. Tech Stack
-
-### **Frontend**
-
-* React
-* TypeScript
-* Vite
-* Tailwind CSS
-* React Router
-* WebSocket (Socket.IO client)
-
-### **Backend**
-
-* Node.js
-* Express
-* MongoDB + Mongoose
-* JWT Authentication + Google OAuth 2.0
-* bcrypt Password Hashing
-* Cron-based Automation
-* Socket.IO for real-time updates
-
----
-
-## 9. Installation Guide
-
-### **1. Clone Repository**
-
+## Getting started locally
 ```bash
+# Clone
 git clone https://github.com/Nizamuddin1N/devNest
 cd devNest
-```
 
-### **2. Backend Setup**
-
-```bash
-cd backend
-npm install
-cp .env.example .env
-```
-
-### **3. Frontend Setup**
-
-```bash
-cd frontend
-npm install
-cp .env.example .env
-```
-
-### **4. Start Application**
-
-```bash
 # Backend
 cd backend
+npm install
+cp .env.example .env
 npm run dev
 
-# Frontend
+# Frontend (new terminal)
 cd frontend
+npm install
+cp .env.example .env
 npm run dev
 ```
 
-Access at:
-
-* Frontend → [http://localhost:3000](http://localhost:3000)
-* Backend API → [http://localhost:5000/api](http://localhost:5000/api)
+Frontend → `http://localhost:3000`
+Backend API → `http://localhost:5000/api`
 
 ---
 
-## 10. API Overview
+## Environment variables
+```env
+# Backend
+MONGO_URI=
+JWT_ACCESS_SECRET=
+JWT_REFRESH_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+CLIENT_URL=http://localhost:3000
 
-### **Authentication**
-
-* Register
-* Login
-* Google OAuth Login
-* Get Current User
-
-### **Posts**
-
-* Create
-* Retrieve
-* Delete
-* Report
-
-### **Admin**
-
-* Identify anonymous author
-* Ban/unban users
-* View reported posts
-* View analytics
-
-### **WebSocket Events**
-
-* Post updates
-* Reports
-* Admin actions
-* User status
+# Frontend
+VITE_API_URL=http://localhost:5000/api
+VITE_SOCKET_URL=http://localhost:5000
+```
 
 ---
 
-## 11. System Strengths
-
-* Centralized campus information
-* Automated event collection
-* Secure anonymous environment
-* Structured learning guidance
-* Admin-driven moderation
-* Real-time updates
-* Scalable microservice-like organization
+## Project structure
+```
+devNest/
+├── backend/
+│   ├── services/
+│   │   ├── auth/           JWT, Google OAuth, refresh tokens
+│   │   ├── community/      Posts, likes, reports, moderation
+│   │   ├── opportunity/    CRUD + scraper integration
+│   │   ├── learning/       Roadmaps, resources, progress
+│   │   └── scraper/        CRON jobs, Unstop + Devpost fetchers
+│   ├── models/
+│   │   ├── User.js
+│   │   ├── Post.js
+│   │   ├── Opportunity.js
+│   │   ├── LearningProgress.js
+│   │   └── AnonymousMapping.js   ← never exposed publicly
+│   └── socket/             WebSocket event handlers
+└── frontend/
+    └── src/
+        ├── pages/          Dashboard, Opportunities, Learning, Community
+        ├── components/
+        ├── context/        Auth context
+        └── api/            Axios instances
+```
 
 ---
 
-## 12. Conclusion
+## API overview
 
-DevNest is a technologically robust, fully integrated platform built to enhance the academic ecosystem.
-Its combination of modular design, automated data ingestion, secure interaction models, and user-friendly interfaces makes it a scalable and modern solution for campus communities.
+**Auth** — register, login, Google OAuth, refresh token, get current user
+
+**Posts** — create (anonymous or identified), list, delete, like, report
+
+**Opportunities** — list, search, filter, get by ID
+
+**Learning** — get roadmaps, get resources by skill, save progress
+
+**Admin (protected)** — reveal anonymous author, ban/unban user, view reported posts, view analytics
+
+**WebSocket events** — new post, post reported, admin action, user online status
+
+---
+
+## Known limitations
+
+- Scraper depends on Unstop and Devpost HTML structure — breaking changes on their end require selector updates
+- Anonymous identity mapping adds a DB lookup on every admin moderation action
+- No mobile layout yet, designed for desktop browsers
+  
+---
+
+*Built by [Nizamuddin](https://github.com/Nizamuddin1N)*
